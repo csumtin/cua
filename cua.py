@@ -1,6 +1,6 @@
 import sys
 import time
-from evdev import ecodes, InputEvent, InputDevice, UInput, categorize
+from evdev import list_devices, ecodes, InputEvent, InputDevice, UInput, categorize
 
 def special_keys_mapping(event):
     if event.code == ecodes.KEY_LEFTALT:
@@ -86,8 +86,13 @@ def write_default_event(event):
 try:
     # when program is run from terminal, give terminal time to see the new line release
     time.sleep(1)
+    # get the right device
+    device_path = ''
+    for device in [InputDevice(path) for path in list_devices()]:
+        if device.phys == 'isa0060/serio0/input0':
+            device_path = device.path
 
-    keyboard = InputDevice('/dev/input/event0')
+    keyboard = InputDevice(device_path)
     keyboard.grab()
 
     virtual_keyboard = UInput()
