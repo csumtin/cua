@@ -125,6 +125,15 @@ try:
         special_key_rule(ecodes.KEY_CAPSLOCK, ecodes.KEY_H, [press(ecodes.KEY_LEFTCTRL), press(ecodes.KEY_LEFT), unpress(ecodes.KEY_LEFT), unpress(ecodes.KEY_LEFTCTRL)], [ecodes.KEY_LEFTCTRL, ecodes.KEY_LEFTALT, ecodes.KEY_LEFTMETA]),
         special_key_rule(ecodes.KEY_CAPSLOCK, ecodes.KEY_F, [press(ecodes.KEY_LEFTCTRL), press(ecodes.KEY_RIGHT), unpress(ecodes.KEY_RIGHT), unpress(ecodes.KEY_LEFTCTRL)], [ecodes.KEY_LEFTCTRL, ecodes.KEY_LEFTALT, ecodes.KEY_LEFTMETA]),
 
+        # enter
+        special_key_rule(ecodes.KEY_CAPSLOCK, ecodes.KEY_SEMICOLON, [press(ecodes.KEY_ENTER), unpress(ecodes.KEY_ENTER)], []),
+
+        # backspace
+        special_key_rule(ecodes.KEY_CAPSLOCK, ecodes.KEY_P, [press(ecodes.KEY_BACKSPACE), unpress(ecodes.KEY_BACKSPACE)], []),
+
+        # delete
+        special_key_rule(ecodes.KEY_CAPSLOCK, ecodes.KEY_LEFTBRACE, [press(ecodes.KEY_DELETE), unpress(ecodes.KEY_DELETE)], []),
+
         ## Window navigation
         # tab navigation
         special_key_rule(ecodes.KEY_LEFTMETA, ecodes.KEY_J, [press(ecodes.KEY_LEFTCTRL), unpress(ecodes.KEY_LEFTMETA), press(ecodes.KEY_LEFTSHIFT), press(ecodes.KEY_TAB), unpress(ecodes.KEY_TAB), unpress(ecodes.KEY_LEFTSHIFT), unpress(ecodes.KEY_LEFTCTRL), press(ecodes.KEY_LEFTMETA), press(ecodes.KEY_LEFTALT), unpress(ecodes.KEY_LEFTALT)], []),
