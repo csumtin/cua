@@ -89,7 +89,7 @@ try:
     # get the right device
     device_path = ''
     for device in [InputDevice(path) for path in list_devices()]:
-        if device.phys == 'isa0060/serio0/input0':
+        if device.name == 'AT Translated Set 2 keyboard':
             device_path = device.path
 
     keyboard = InputDevice(device_path)
@@ -101,6 +101,9 @@ try:
         check_special_keys,
         check_toggle_keys,
         # kill_sequence(ecodes.KEY_CAPSLOCK, ecodes.KEY_EQUAL),
+        
+        # auto phrase example
+        special_key_rule(ecodes.KEY_CAPSLOCK, ecodes.KEY_2, [press(ecodes.KEY_P), unpress(ecodes.KEY_P), press(ecodes.KEY_H), unpress(ecodes.KEY_H)], []),
 
         ## Inside text editor
         # text navigation
@@ -127,13 +130,13 @@ try:
 
         # enter
         special_key_rule(ecodes.KEY_CAPSLOCK, ecodes.KEY_SEMICOLON, [press(ecodes.KEY_ENTER), unpress(ecodes.KEY_ENTER)], []),
-
+                
         # backspace
         special_key_rule(ecodes.KEY_CAPSLOCK, ecodes.KEY_P, [press(ecodes.KEY_BACKSPACE), unpress(ecodes.KEY_BACKSPACE)], []),
 
         # delete
         special_key_rule(ecodes.KEY_CAPSLOCK, ecodes.KEY_LEFTBRACE, [press(ecodes.KEY_DELETE), unpress(ecodes.KEY_DELETE)], []),
-
+        
         ## Window navigation
         # tab navigation
         special_key_rule(ecodes.KEY_LEFTMETA, ecodes.KEY_J, [press(ecodes.KEY_LEFTCTRL), unpress(ecodes.KEY_LEFTMETA), press(ecodes.KEY_LEFTSHIFT), press(ecodes.KEY_TAB), unpress(ecodes.KEY_TAB), unpress(ecodes.KEY_LEFTSHIFT), unpress(ecodes.KEY_LEFTCTRL), press(ecodes.KEY_LEFTMETA), press(ecodes.KEY_LEFTALT), unpress(ecodes.KEY_LEFTALT)], []),

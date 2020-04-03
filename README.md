@@ -2,15 +2,16 @@
 
 ## Use evdev for keybindings
 * `apt install python-pip` then `pip install evdev`
-* you will need to get your keyboard device, eg `/dev/input/event0`
-* run as root:
+* you will need to get your keyboard device name, eg `AT Translated Set 2 keyboard`
+* run as root, python>>>
 ```
 import evdev
-print("\n".join(map(lambda x: str((x.path, x.name, x.phys)), [evdev.InputDevice(path) for path in evdev.list_devices()])))
+print("\n".join(map(lambda x: str((x.name, x.phys, x.path)), [evdev.InputDevice(path) for path in evdev.list_devices()])))
 ```
-* run as root `python cua.py` 
-* add `cua.service` to run on startup `/etc/systemd/system/cua.service`
-* run on boot `systemctl enable cua`
+* run as root `python cua0.py` 
+* or add `cua0.service` to run on startup `cp cua0.service /etc/systemd/system/` and `systemctl enable cua0`
+
+* repeat above steps for other keyboards, cua1, cua2, ...
 
 ## Standard shortcuts
 * Switch Ctrl and Alt for better ergonomics
