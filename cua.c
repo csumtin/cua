@@ -114,9 +114,10 @@ int main(int argc, char **argv) {
         
         // switch ctrl and alt
         if(event.code == KEY_LEFTALT) {
+          spk.alt = event.value;
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTCTRL, event.value);
         } else if(event.code == KEY_LEFTCTRL) {
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTALT, event.value);
+          spk.ctrl = event.value;
                   
         } else if(event.code == KEY_CAPSLOCK) {
           // use capslock and meta as modifier keys
@@ -139,54 +140,58 @@ int main(int argc, char **argv) {
           } 
         } else if(event.code == KEY_LEFTMETA) {
           spk.meta = event.value;
+          if(previous_key == KEY_LEFTMETA && event.value == 0) {
+            libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTMETA, 1);
+            libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTMETA, 0);
+          }
           
-        } else if(spk.capslock && event.code == KEY_I) {
+        } else if(spk.capslock && event.code == KEY_I && !spk.ctrl && !spk.alt && !spk.meta) {
           // basic navigation
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_UP, event.value);
-        } else if(spk.capslock && event.code == KEY_J) {
+        } else if(spk.capslock && event.code == KEY_J && !spk.ctrl && !spk.alt && !spk.meta) {
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFT, event.value);
-        } else if(spk.capslock && event.code == KEY_K) {
+        } else if(spk.capslock && event.code == KEY_K && !spk.ctrl && !spk.alt && !spk.meta) {
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_DOWN, event.value);
-        } else if(spk.capslock && event.code == KEY_L) {
+        } else if(spk.capslock && event.code == KEY_L && !spk.ctrl && !spk.alt && !spk.meta) {
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_RIGHT, event.value);
-          
-        } else if(spk.capslock && event.code == KEY_U) {
+         
+        } else if(spk.capslock && event.code == KEY_U && !spk.ctrl && !spk.alt && !spk.meta) {
           // pgUp/pgDn
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_PAGEUP, event.value);
-        } else if(spk.capslock && event.code == KEY_N) {
+        } else if(spk.capslock && event.code == KEY_N && !spk.ctrl && !spk.alt && !spk.meta) {
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_PAGEDOWN, event.value);
           
-        } else if(spk.capslock && event.code == KEY_A) {
+        } else if(spk.capslock && event.code == KEY_A && !spk.ctrl && !spk.alt && !spk.meta) {
           // start and enf of line
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_HOME, event.value);
-        } else if(spk.capslock && event.code == KEY_D) {
+        } else if(spk.capslock && event.code == KEY_D && !spk.ctrl && !spk.alt && !spk.meta) {
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_END, event.value);
           
-        } else if(spk.capslock && event.code == KEY_W) {
+        } else if(spk.capslock && event.code == KEY_W && !spk.ctrl && !spk.alt && !spk.meta) {
           // start and enf of file
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTCTRL, event.value);
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_HOME, event.value);
-        } else if(spk.capslock && event.code == KEY_S) {
+        } else if(spk.capslock && event.code == KEY_S && !spk.ctrl && !spk.alt && !spk.meta) {
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTCTRL, event.value);
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_END, event.value);
           
-        } else if(spk.capslock && event.code == KEY_H) {
+        } else if(spk.capslock && event.code == KEY_H && !spk.ctrl && !spk.alt && !spk.meta) {
           // start and end of word
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTCTRL, event.value);
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFT, event.value);
-        } else if(spk.capslock && event.code == KEY_F) {
+        } else if(spk.capslock && event.code == KEY_F && !spk.ctrl && !spk.alt && !spk.meta) {
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTCTRL, event.value);
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_RIGHT, event.value);
           
-        } else if(spk.capslock && event.code == KEY_SEMICOLON) {
+        } else if(spk.capslock && event.code == KEY_SEMICOLON && !spk.ctrl && !spk.alt && !spk.meta) {
           // enter
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_ENTER, event.value);
           
-        } else if(spk.capslock && event.code == KEY_P) {
+        } else if(spk.capslock && event.code == KEY_P && !spk.ctrl && !spk.alt && !spk.meta) {
           // backspace
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_BACKSPACE, event.value);
           
-        } else if(spk.capslock && event.code == KEY_LEFTBRACE) {
+        } else if(spk.capslock && event.code == KEY_LEFTBRACE && !spk.ctrl && !spk.alt && !spk.meta) {
           // delete
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_DELETE, event.value);
           
@@ -195,7 +200,7 @@ int main(int argc, char **argv) {
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTCTRL, event.value);
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTSHIFT, event.value);
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_TAB, event.value);
-        } else if(spk.meta && event.code == KEY_L) {
+        } else if(spk.meta && event.code == KEY_L && !spk.ctrl) {
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTCTRL, event.value);
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_TAB, event.value);
           
@@ -215,45 +220,51 @@ int main(int argc, char **argv) {
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTMETA, event.value);
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_UP, event.value);
           
-        } else if(spk.alt && event.code == KEY_C) {
+        } else if(spk.ctrl && spk.meta && event.code == KEY_L) {
+          // lock screen
+          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTMETA, event.value);
+          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_L, event.value);
+          
+        } else if(spk.ctrl && event.code == KEY_C) {
           // ctrl-c
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTCTRL, event.value);
+          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTSHIFT, event.value);
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_C, event.value);
           
-        } else if(spk.alt && event.code == KEY_L) {
+        } else if(spk.ctrl && event.code == KEY_L) {
           // ctrl-l
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTCTRL, event.value);
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_L, event.value);
           
-        } else if(spk.alt && event.code == KEY_D) { 
+        } else if(spk.ctrl && event.code == KEY_D) { 
           // ctrl-d
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTCTRL, event.value);
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_D, event.value);
   
-        } else if(spk.alt && event.code == KEY_X) { 
+        } else if(spk.ctrl && event.code == KEY_X) { 
           // ctrl-x
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTCTRL, event.value);
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_X, event.value);
           
-        } else if(spk.alt && event.code == KEY_K) { 
+        } else if(spk.ctrl && event.code == KEY_K) { 
           // ctrl-k
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTCTRL, event.value);
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_K, event.value);
           
-        } else if(spk.alt && event.code == KEY_U) { 
+        } else if(spk.ctrl && event.code == KEY_U) { 
           // ctrl-u
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTCTRL, event.value);
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_U, event.value);
           
-        } else if(spk.alt && event.code == KEY_Z) { 
+        } else if(spk.ctrl && event.code == KEY_Z) { 
           // ctrl-z
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTCTRL, event.value);
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_Z, event.value);
-          
+         
         } else if(spk.capslock && event.code == KEY_3) {
           // auto phrase
           if(event.value == 1) {
-          
+       
 
           }
         } else {
