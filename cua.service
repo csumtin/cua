@@ -1,0 +1,10 @@
+[Unit]
+Description=cua service
+
+[Service]
+Type=simple
+ExecStart=/home/c/cua/cua
+
+[Install]
+WantedBy=multi-user.target
+
