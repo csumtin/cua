@@ -69,7 +69,7 @@
 * Meta-a = back
 * Meta-d = forward
 
-* Meta-f = fullscreen
+* Meta-f = toggle fullscreen
 
 ## Terminal
 * copy and paste are same Ctrl-c and Ctrl-v

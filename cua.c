@@ -195,22 +195,28 @@ int main(int argc, char **argv) {
           // delete
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_DELETE, event.value);
           
-        } else if(spk.meta && event.code == KEY_J) {
+        } else if(spk.meta && (event.code == KEY_J || event.code == KEY_LEFT)) {
           // tab left and right
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTCTRL, event.value);
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTSHIFT, event.value);
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_TAB, event.value);
-        } else if(spk.meta && event.code == KEY_L && !spk.ctrl) {
+        } else if(spk.meta && (event.code == KEY_L || event.code == KEY_RIGHT) && !spk.ctrl) {
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTCTRL, event.value);
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_TAB, event.value);
           
-        } else if(spk.meta && event.code == KEY_I) {
+        } else if(spk.meta && (event.code == KEY_I || event.code == KEY_UP)) {
           // workspace up and down
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTMETA, event.value);
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_UP, event.value);
-        } else if(spk.meta && event.code == KEY_K) {
+        } else if(spk.meta && (event.code == KEY_K || event.code == KEY_DOWN)) {
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTMETA, event.value);
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_DOWN, event.value);
+          
+        } else if(spk.meta && event.code == KEY_F && event.value == 0) {
+          // toggle fullscreen
+          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTMETA, 1);
+          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_F, 0);
+          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTMETA, 0);
           
         } else if(spk.meta && event.code == KEY_D) {
           // browser forward and back
