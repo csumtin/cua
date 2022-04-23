@@ -63,6 +63,7 @@ struct libevdev* get_input_device_by_name(char *input_device_name) {
 int main(int argc, char **argv) {
 
   char *input_device_name = "AT Translated Set 2 keyboard";
+  // char *input_device_name = "Lenovo ThinkPad Compact USB Keyboard with TrackPoint";
   struct libevdev *input_dev = get_input_device_by_name(input_device_name);
   if(input_dev == NULL) {
     fprintf(stderr, "Couldn't open %s\n", input_device_name);
