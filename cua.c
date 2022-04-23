@@ -270,8 +270,8 @@ int main(int argc, char **argv) {
         } else if(spk.capslock && event.code == KEY_3) {
           // auto phrase
           if(event.value == 1) {
-       
-
+            libevdev_uinput_write_event(output_dev, EV_KEY, KEY_A, 1);
+            libevdev_uinput_write_event(output_dev, EV_KEY, KEY_A, 0);
           }
         } else {
           // we didn't match any rules, pass along event
