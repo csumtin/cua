@@ -213,11 +213,10 @@ int main(int argc, char **argv) {
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTMETA, event.value);
           libevdev_uinput_write_event(output_dev, EV_KEY, KEY_DOWN, event.value);
           
-        } else if(spk.meta && event.code == KEY_F && event.value == 0) {
+        } else if(spk.meta && event.code == KEY_F) {
           // toggle fullscreen
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTMETA, 1);
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_F, 0);
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTMETA, 0);
+          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTMETA, event.value);
+          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_F, event.value);
           
         } else if(spk.meta && event.code == KEY_D) {
           // browser forward and back
