@@ -4,6 +4,7 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <errno.h>
 #include <libevdev/libevdev.h>
 #include <libevdev/libevdev-uinput.h>
 
@@ -14,273 +15,267 @@ struct special_keys {
   int meta;
 };
 
-struct libevdev* get_input_device_by_name(char *input_device_name) {
+struct input_device {
+  int fd;
+  struct libevdev *dev;
+};
+
+int first_run = 1;
+
+struct input_device get_input_device_by_name(char *input_device_name) {
   DIR *dir = opendir("/dev/input");
   struct dirent *de;
   
   while((de = readdir(dir)) != NULL) {
-    if(de->d_type == DT_CHR) {
-      char *dev_path = malloc(strlen("/dev/input/") + strlen(de->d_name) + 1);
-      strcpy(dev_path, "/dev/input/");
-      strcat(dev_path, de->d_name);
-      
-      int fd = open(dev_path, O_RDONLY);
-      if(fd < 0) {
-        fprintf(stderr, "Couldn't open %s\n", dev_path);
-        free(dev_path);
-        continue;
-      }
-      
-      struct libevdev *input_dev;
-      int err = libevdev_new_from_fd(fd, &input_dev);
-      if(err) {
-        fprintf(stderr, "Libevdev input device error %s for %s\n", strerror(err), dev_path);
-        free(dev_path);
-        continue;
-      }
-      
-      const char *dev_name = libevdev_get_name(input_dev);
-      const char *dev_phys = libevdev_get_phys(input_dev);
-      
-      printf("%s %s %s\n", dev_path, dev_name, dev_phys);
-      
-      free(dev_path);
-      
-      // check phys ends with 0 as duplicate device names possible
-      if(strcmp(dev_name, input_device_name) == 0 && dev_phys[strlen(dev_phys) - 1] == '0') {
-        closedir(dir);
-        return input_dev;
-      }
-      
-      libevdev_free(input_dev);
+    if(de->d_type != DT_CHR) {
+      continue;
+    }
+  	
+    char dev_path[256];
+    snprintf(dev_path, sizeof(dev_path), "/dev/input/%s", de->d_name);
+    
+    int fd = open(dev_path, O_RDONLY);
+    if(fd < 0) {
+      fprintf(stderr, "Couldn't open %s\n", dev_path);
+      continue;
+    }
+    
+    struct libevdev *dev;
+    int err = libevdev_new_from_fd(fd, &dev);
+    if(err) {
       close(fd);
-    }  
+      fprintf(stderr, "Libevdev input device error %s for %s\n", strerror(err), dev_path);
+      continue;
+    }
+    
+    const char *dev_name = libevdev_get_name(dev);
+    const char *dev_phys = libevdev_get_phys(dev);
+    
+    if(first_run) {
+      printf("%s %s %s\n", dev_path, dev_name, dev_phys);
+      first_run = 0;
+    }
+    
+    // check phys ends with 0 as duplicate device names possible
+    if(dev_name && dev_phys && strcmp(dev_name, input_device_name) == 0 && dev_phys[strlen(dev_phys) - 1] == '0') {
+      closedir(dir);
+      return (struct input_device){
+        .fd = fd,
+        .dev = dev
+      };
+    }
+    
+    libevdev_free(dev);
+    close(fd);
   }
   
   closedir(dir);
+  return (struct input_device){
+    .fd = -1,
+    .dev = NULL
+  };
+}
+
+void press(struct libevdev_uinput *output_dev, int code, int value) {
+  libevdev_uinput_write_event(output_dev, EV_KEY, code, value);
+}
+
+void press_mod1(struct libevdev_uinput *output_dev, int mod, int code, int value) {
+  if(value == 1) {
+    press(output_dev, mod, 1);
+    press(output_dev, code, 1);
+  } else if(value == 2) {
+    // don't repeat mod key as may get stuck
+    press(output_dev, code, 2);
+  } else if(value == 0) {
+    press(output_dev, code, 0);
+    press(output_dev, mod, 0);
+  }
+}
+
+void press_mod2(struct libevdev_uinput *output_dev, int mod1, int mod2, int code, int value) {
+  if(value == 1) {
+    press(output_dev, mod1, 1);
+    press(output_dev, mod2, 1);
+    press(output_dev, code, 1);
+  } else if(value == 2) {
+    // don't repeat mod key as may get stuck
+    press(output_dev, code, 2);
+  } else if(value == 0) {
+    press(output_dev, code, 0);
+    press(output_dev, mod1, 0);
+    press(output_dev, mod2, 0);
+  }
 }
 
 int main(int argc, char **argv) {
-
-  char *input_device_name = "AT Translated Set 2 keyboard";
-  // char *input_device_name = "Lenovo ThinkPad Compact USB Keyboard with TrackPoint";
-  struct libevdev *input_dev = get_input_device_by_name(input_device_name);
-  if(input_dev == NULL) {
-    fprintf(stderr, "Couldn't open %s\n", input_device_name);
+  if(argc < 2) {
+    fprintf(stderr, "Missing device name\n");
     return 1;
   }
-  
-  int uifd = open("/dev/uinput", O_RDWR);
-  if (uifd < 0) {
-      fprintf(stderr, "Couldn't open /dev/uinput\n");
-      return 1;
-  }
-  
-  struct libevdev_uinput *output_dev;
-  int err = libevdev_uinput_create_from_device(input_dev, uifd, &output_dev);
-  if (err) {
-      fprintf(stderr, "Libevdev output device error %s for %s\n", strerror(err), input_device_name);
-      return 1;
-  }
 
-  err = libevdev_grab(input_dev, LIBEVDEV_GRAB);
-  if (err) {
-      fprintf(stderr, "Libevdev grab error %s for %s\n", strerror(err), input_device_name);
-      return 1;
-  }
+  char *input_device_name = argv[1];
   
-  struct input_event event;
-  struct special_keys spk = {
-    .ctrl = 0,
-    .alt = 0,
-    .capslock = 0,
-    .meta = 0,
-  };
-  
-  int previous_key;
-  
-  int capslock_toggle = 0;
+  struct input_device input = { .fd = -1, .dev = NULL };
+  struct libevdev_uinput *output_dev = NULL;
   
   for(;;) {
-
-    err = libevdev_next_event(input_dev, LIBEVDEV_READ_FLAG_NORMAL | LIBEVDEV_READ_FLAG_BLOCKING, &event);
-    if (err) {
-        fprintf(stderr, "Libevdev next event error %s for %s\n", strerror(err), input_device_name);
-        exit(1);
+    if(!input.dev) {
+      input = get_input_device_by_name(input_device_name);
+      if(!input.dev) {
+        sleep(3);
+        continue;
+      }
     }
-    
-    if(event.type == EV_KEY) {
-        const char *event_name = libevdev_event_code_get_name(event.type, event.code);
-        // printf("Event: %s %d\n", event_name, event.value);
-        
-        // switch ctrl and alt
-        if(event.code == KEY_LEFTALT) {
-          spk.alt = event.value;
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTCTRL, event.value);
-        } else if(event.code == KEY_LEFTCTRL) {
-          spk.ctrl = event.value;
-                  
-        } else if(event.code == KEY_CAPSLOCK) {
-          // use capslock and meta as modifier keys
-          if(event.value == 1 || event.value == 2) {
-            spk.capslock = 1;
+
+    int uifd = open("/dev/uinput", O_RDWR);
+    if(uifd < 0) {
+      fprintf(stderr, "Couldn't open /dev/uinput\n");
+      return 1;
+    }
+
+    int err = libevdev_uinput_create_from_device(input.dev, uifd, &output_dev);
+    if(err) {
+      fprintf(stderr, "Libevdev output device error %s for %s\n", strerror(err), input_device_name);
+      return 1;
+    }
+
+    err = libevdev_grab(input.dev, LIBEVDEV_GRAB);
+    if(err) {
+      fprintf(stderr, "Libevdev grab error %s for %s\n", strerror(err), input_device_name);
+      return 1;
+    }
+
+    struct input_event event;
+    struct special_keys spk = {
+      .ctrl = 0,
+      .alt = 0,
+      .capslock = 0,
+      .meta = 0,
+    };
+
+    int previous_key = 0;
+    int capslock_toggle = 0;
+
+    for(;;) {
+
+    int rc = libevdev_next_event(input.dev, LIBEVDEV_READ_FLAG_NORMAL | LIBEVDEV_READ_FLAG_BLOCKING, &event);
+    if(rc == -ENODEV) {
+      libevdev_uinput_destroy(output_dev);
+      output_dev = NULL;
+      libevdev_free(input.dev);
+      close(input.fd);
+      close(uifd);
+      input = (struct input_device){ .fd = -1, .dev = NULL };
+      sleep(1);
+      break;
+    }
+
+    if(event.type != EV_KEY) {
+      continue;
+    }    
+
+    const char *event_name = libevdev_event_code_get_name(event.type, event.code);
+    // printf("Event: %s %d\n", event_name, event.value);
+
+    // switch ctrl and alt
+    if(event.code == KEY_LEFTALT) {
+      spk.alt = event.value;
+      press(output_dev, KEY_LEFTCTRL, event.value);
+    } else if(event.code == KEY_LEFTCTRL) {
+      spk.ctrl = event.value;
+
+    } else if(event.code == KEY_CAPSLOCK) {
+      // use capslock and meta as modifier keys
+      if(event.value == 1) {
+        spk.capslock = 1;
+      } else if(event.value == 0) {
+        if(previous_key == KEY_CAPSLOCK) {
+          // capslock is sticky
+          if(capslock_toggle) {
+            capslock_toggle = 0;
+            spk.capslock = 0;
           } else {
-            if(previous_key == KEY_CAPSLOCK) {
-              // capslock is sticky
-              if(capslock_toggle) {
-                capslock_toggle = 0;
-                spk.capslock = 0;
-              } else {
-                capslock_toggle = 1;
-                spk.capslock = 1;
-              }
-            } else {
-              spk.capslock = 0;
-              capslock_toggle = 0;
-            }
-          } 
-        } else if(event.code == KEY_LEFTMETA) {
-          spk.meta = event.value;
-          if(previous_key == KEY_LEFTMETA && event.value == 0) {
-            libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTMETA, 1);
-            libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTMETA, 0);
-          }
-          
-        } else if(spk.capslock && event.code == KEY_I && !spk.ctrl && !spk.alt && !spk.meta) {
-          // basic navigation
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_UP, event.value);
-        } else if(spk.capslock && event.code == KEY_J && !spk.ctrl && !spk.alt && !spk.meta) {
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFT, event.value);
-        } else if(spk.capslock && event.code == KEY_K && !spk.ctrl && !spk.alt && !spk.meta) {
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_DOWN, event.value);
-        } else if(spk.capslock && event.code == KEY_L && !spk.ctrl && !spk.alt && !spk.meta) {
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_RIGHT, event.value);
-         
-        } else if(spk.capslock && event.code == KEY_U && !spk.ctrl && !spk.alt && !spk.meta) {
-          // pgUp/pgDn
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_PAGEUP, event.value);
-        } else if(spk.capslock && event.code == KEY_N && !spk.ctrl && !spk.alt && !spk.meta) {
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_PAGEDOWN, event.value);
-          
-        } else if(spk.capslock && event.code == KEY_A && !spk.ctrl && !spk.alt && !spk.meta) {
-          // start and enf of line
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_HOME, event.value);
-        } else if(spk.capslock && event.code == KEY_D && !spk.ctrl && !spk.alt && !spk.meta) {
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_END, event.value);
-          
-        } else if(spk.capslock && event.code == KEY_W && !spk.ctrl && !spk.alt && !spk.meta) {
-          // start and enf of file
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTCTRL, event.value);
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_HOME, event.value);
-        } else if(spk.capslock && event.code == KEY_S && !spk.ctrl && !spk.alt && !spk.meta) {
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTCTRL, event.value);
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_END, event.value);
-          
-        } else if(spk.capslock && event.code == KEY_H && !spk.ctrl && !spk.alt && !spk.meta) {
-          // start and end of word
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTCTRL, event.value);
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFT, event.value);
-        } else if(spk.capslock && event.code == KEY_F && !spk.ctrl && !spk.alt && !spk.meta) {
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTCTRL, event.value);
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_RIGHT, event.value);
-          
-        } else if(spk.capslock && event.code == KEY_SEMICOLON && !spk.ctrl && !spk.alt && !spk.meta) {
-          // enter
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_ENTER, event.value);
-          
-        } else if(spk.capslock && event.code == KEY_P && !spk.ctrl && !spk.alt && !spk.meta) {
-          // backspace
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_BACKSPACE, event.value);
-          
-        } else if(spk.capslock && event.code == KEY_LEFTBRACE && !spk.ctrl && !spk.alt && !spk.meta) {
-          // delete
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_DELETE, event.value);
-          
-        } else if(spk.meta && (event.code == KEY_J || event.code == KEY_LEFT)) {
-          // tab left and right
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTCTRL, event.value);
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTSHIFT, event.value);
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_TAB, event.value);
-        } else if(spk.meta && (event.code == KEY_L || event.code == KEY_RIGHT) && !spk.ctrl) {
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTCTRL, event.value);
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_TAB, event.value);
-          
-        } else if(spk.meta && (event.code == KEY_I || event.code == KEY_UP)) {
-          // workspace up and down
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTMETA, event.value);
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_UP, event.value);
-        } else if(spk.meta && (event.code == KEY_K || event.code == KEY_DOWN)) {
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTMETA, event.value);
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_DOWN, event.value);
-          
-        } else if(spk.meta && event.code == KEY_F) {
-          // toggle fullscreen
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTMETA, event.value);
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_F, event.value);
-          
-        } else if(spk.meta && event.code == KEY_D) {
-          // browser forward and back
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTMETA, event.value);
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_DOWN, event.value);
-        } else if(spk.meta && event.code == KEY_A) {
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTMETA, event.value);
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_UP, event.value);
-          
-        } else if(spk.ctrl && spk.meta && event.code == KEY_L) {
-          // lock screen
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTMETA, event.value);
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_L, event.value);
-          
-        } else if(spk.ctrl && event.code == KEY_C) {
-          // ctrl-c
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTCTRL, event.value);
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTSHIFT, event.value);
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_C, event.value);
-          
-        } else if(spk.ctrl && event.code == KEY_L) {
-          // ctrl-l
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTCTRL, event.value);
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_L, event.value);
-          
-        } else if(spk.ctrl && event.code == KEY_D) { 
-          // ctrl-d
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTCTRL, event.value);
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_D, event.value);
-  
-        } else if(spk.ctrl && event.code == KEY_X) { 
-          // ctrl-x
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTCTRL, event.value);
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_X, event.value);
-          
-        } else if(spk.ctrl && event.code == KEY_K) { 
-          // ctrl-k
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTCTRL, event.value);
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_K, event.value);
-          
-        } else if(spk.ctrl && event.code == KEY_U) { 
-          // ctrl-u
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTCTRL, event.value);
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_U, event.value);
-          
-        } else if(spk.ctrl && event.code == KEY_Z) { 
-          // ctrl-z
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_LEFTCTRL, event.value);
-          libevdev_uinput_write_event(output_dev, EV_KEY, KEY_Z, event.value);
-         
-        } else if(spk.capslock && event.code == KEY_3) {
-          // auto phrase
-          if(event.value == 1) {
-            libevdev_uinput_write_event(output_dev, EV_KEY, KEY_A, 1);
-            libevdev_uinput_write_event(output_dev, EV_KEY, KEY_A, 0);
+            capslock_toggle = 1;
+            spk.capslock = 1;
           }
         } else {
-          // we didn't match any rules, pass along event
-          libevdev_uinput_write_event(output_dev, EV_KEY, event.code, event.value);
+          spk.capslock = 0;
+          capslock_toggle = 0;
         }
-        
-        previous_key = event.code;
-        
-        libevdev_uinput_write_event(output_dev, EV_SYN, SYN_REPORT, 0);
+      } 
+    } else if(event.code == KEY_LEFTMETA) {
+      spk.meta = event.value;
+      if(previous_key == KEY_LEFTMETA && event.value == 0) {
+        press(output_dev, KEY_LEFTMETA, 1);
+        press(output_dev, KEY_LEFTMETA, 0);
+      }
+
+    } else if(spk.capslock && !spk.ctrl && !spk.alt && !spk.meta) {
+      switch(event.code) {
+        // basic navigation
+        case KEY_I: press(output_dev, KEY_UP, event.value); break;
+        case KEY_J: press(output_dev, KEY_LEFT, event.value); break;
+        case KEY_K: press(output_dev, KEY_DOWN, event.value); break;
+        case KEY_L: press(output_dev, KEY_RIGHT, event.value); break;
+        // pgUp/pgDown
+        case KEY_U: press(output_dev, KEY_PAGEUP, event.value); break;
+        case KEY_N: press(output_dev, KEY_PAGEDOWN, event.value); break;
+        // start and end of line
+        case KEY_A: press(output_dev, KEY_HOME, event.value); break;
+        case KEY_D: press(output_dev, KEY_END, event.value); break;
+        // start and end of file
+        case KEY_W: press_mod1(output_dev, KEY_LEFTCTRL, KEY_HOME, event.value); break;
+        case KEY_S: press_mod1(output_dev, KEY_LEFTCTRL, KEY_END, event.value); break;
+        // start and end of word
+        case KEY_H: press_mod1(output_dev, KEY_LEFTCTRL, KEY_LEFT, event.value); break;
+        case KEY_F: press_mod1(output_dev, KEY_LEFTCTRL, KEY_RIGHT, event.value); break;
+        // autophrase
+        case KEY_3: press(output_dev, KEY_A, event.value); break;
+
+        default: press(output_dev, event.code, event.value);
+      }
+    } else if(spk.ctrl && spk.meta && event.code == KEY_L) {
+      // lock screen
+      press_mod1(output_dev, KEY_LEFTMETA, KEY_L, event.value);
+    } else if(spk.meta) {
+      switch(event.code) {
+        // tab left and right
+        case KEY_J: press_mod2(output_dev, KEY_LEFTCTRL, KEY_LEFTSHIFT, KEY_TAB, event.value); break;
+        case KEY_LEFT: press_mod2(output_dev, KEY_LEFTCTRL, KEY_LEFTSHIFT, KEY_TAB, event.value); break;
+        case KEY_L: press_mod1(output_dev, KEY_LEFTCTRL, KEY_TAB, event.value); break;
+        case KEY_RIGHT: press_mod1(output_dev, KEY_LEFTCTRL, KEY_TAB, event.value); break;
+        // workspace up and down
+        case KEY_I: press_mod1(output_dev, KEY_LEFTMETA, KEY_UP, event.value); break;
+        case KEY_UP: press_mod1(output_dev, KEY_LEFTMETA, KEY_UP, event.value); break;
+        case KEY_K: press_mod1(output_dev, KEY_LEFTMETA, KEY_DOWN, event.value); break;
+        case KEY_DOWN: press_mod1(output_dev, KEY_LEFTMETA, KEY_DOWN, event.value); break;
+        // fullscreen
+        case KEY_F: press_mod1(output_dev, KEY_LEFTMETA, KEY_F, event.value); break;
+
+        default: press(output_dev, event.code, event.value);
+      }
+    } else if(spk.ctrl) {
+      switch(event.code) {
+        // ctrl-c, ctrl-l, ctrl-d, ctrl-x, ctrl-k, ctrl-u, ctrl-z
+        case KEY_C: press_mod2(output_dev, KEY_LEFTCTRL, KEY_LEFTSHIFT, KEY_C, event.value); break;
+        case KEY_L: press_mod1(output_dev, KEY_LEFTCTRL, KEY_L, event.value); break;
+        case KEY_D: press_mod1(output_dev, KEY_LEFTCTRL, KEY_D, event.value); break;
+        case KEY_X: press_mod1(output_dev, KEY_LEFTCTRL, KEY_X, event.value); break;
+        case KEY_K: press_mod1(output_dev, KEY_LEFTCTRL, KEY_K, event.value); break;
+        case KEY_U: press_mod1(output_dev, KEY_LEFTCTRL, KEY_U, event.value); break;
+        case KEY_Z: press_mod1(output_dev, KEY_LEFTCTRL, KEY_Z, event.value); break;
+
+        default: press(output_dev, event.code, event.value);
+      }
+    } else {
+      // we didn't match any rules, pass along event
+      press(output_dev, event.code, event.value);
+    }
+
+    previous_key = event.code;
+
+    libevdev_uinput_write_event(output_dev, EV_SYN, SYN_REPORT, 0);
     }
   }
 }

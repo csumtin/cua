@@ -3,8 +3,8 @@
 ## Use evdev for keybindings
 * to build `make`
 * run as root `./cua`
-* you will need to get your keyboard device name, eg `AT Translated Set 2 keyboard`. Running cua will print out all input device names
-* can add `cua.service` to run on startup `cp cua.service /etc/systemd/system/` and `systemctl enable cua`
+* you will need to get your keyboard device name, eg `AT Translated Set 2 keyboard` in `cua1.service`. Running cua will print out all input device names
+* can add `cua1.service` to run on startup `cp cua1.service /etc/systemd/system/` and `systemctl enable cua1`
 * repeat above steps for other keyboards, cua1, cua2, ...
 
 ## Standard shortcuts
@@ -17,11 +17,6 @@
 * Ctrl-Shift-z = redo
 
 * Ctrl-a = select all
-
-* Ctrl-f = search with regex
-* Ctrl-g = next occurence
-* Ctrl-Shift-g = previous occurence
-* Ctrl-r = replace with regex
 
 * Ctrl-o = open
 * Ctrl-n = new window
@@ -66,9 +61,6 @@
 * Meta-Shift-up or Meta-Shift-i = send window to workspace up
 * Meta-Shit-down or Meta-Shift-k = send window to workspace down
 
-* Meta-a = back
-* Meta-d = forward
-
 * Meta-f = toggle fullscreen
 
 ## Terminal
@@ -80,6 +72,11 @@
 * Ctrl-l = select address bar
 
 ## Code
+* Ctrl-f = search with regex
+* Ctrl-g = next occurence
+* Ctrl-Shift-g = previous occurence
+* Ctrl-r = replace with regex
+
 * Ctrl-i = show usage/find references
 * Ctrl-k = go to definition/declaration
 * Ctrl-j = show docs

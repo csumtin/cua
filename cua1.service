@@ -1,0 +1,12 @@
+[Unit]
+Description=cua1 service
+
+[Service]
+Type=simple
+ExecStart=/home/c/proj/cap/cua/bootstrap/home/c/cua/cua "Lenovo ThinkPad Compact USB Keyboard with TrackPoint"
+# "AT Translated Set 2 keyboard"
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+
