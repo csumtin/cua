@@ -20,8 +20,6 @@ struct input_device {
   struct libevdev *dev;
 };
 
-int first_run = 1;
-
 struct input_device get_input_device_by_name(char *input_device_name) {
   DIR *dir = opendir("/dev/input");
   struct dirent *de;
@@ -51,13 +49,11 @@ struct input_device get_input_device_by_name(char *input_device_name) {
     const char *dev_name = libevdev_get_name(dev);
     const char *dev_phys = libevdev_get_phys(dev);
     
-    if(first_run) {
+    if(!input_device_name) {
       printf("%s %s %s\n", dev_path, dev_name, dev_phys);
-      first_run = 0;
-    }
-    
-    // check phys ends with 0 as duplicate device names possible
-    if(dev_name && dev_phys && strcmp(dev_name, input_device_name) == 0 && dev_phys[strlen(dev_phys) - 1] == '0') {
+      
+      // check phys ends with 0 as duplicate device names possible
+    } else if(dev_name && dev_phys && strcmp(dev_name, input_device_name) == 0 && dev_phys[strlen(dev_phys) - 1] == '0') {
       closedir(dir);
       return (struct input_device){
         .fd = fd,
@@ -110,6 +106,7 @@ void press_mod2(struct libevdev_uinput *output_dev, int mod1, int mod2, int code
 
 int main(int argc, char **argv) {
   if(argc < 2) {
+    get_input_device_by_name(NULL);
     fprintf(stderr, "Missing device name\n");
     return 1;
   }
